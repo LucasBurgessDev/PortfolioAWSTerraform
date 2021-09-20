@@ -1,0 +1,52 @@
+# -----------------------------------------------------------------------------------------------------------
+# Create Data Factory
+# -----------------------------------------------------------------------------------------------------------
+
+resource "azurerm_data_factory" "prod_a7m_data_factory" {
+  name = join("", [join("-", [lower(var.company_code), replace((lower(var.tags["service"])), " ", "-"), replace((lower(var.tags["environment"])), " ", "-"), lookup(var.region_code, var.location), lower(var.data_factory_label)])
+  , var.datafactory_number])
+  location            = lower(var.location)
+  resource_group_name = azurerm_resource_group.prod_a7m_resource_group.name
+  identity {
+    type = "SystemAssigned"
+  }
+  tags = var.tags
+}
+
+variable "data_factory_number" {
+  type        = string
+  default     = "1"
+  description = "(Required) Specifies a number to append to the storage account named. Changing this forces a new resource to be created. This must be unique across the entire Azure service, not just within the resource group."
+}
+
+resource "azurerm_monitor_diagnostic_setting" "prod_a7m_data_factory_diagnostic_setting" {
+  name = join("", [join("-", [lower(var.company_code), replace((lower(var.tags["service"])), " ", "-"), replace((lower(var.tags["environment"])), " ", "-"), lookup(var.region_code, var.regions.primaryregion), "datafactory-diagnostic-setting"])
+  , var.data_factory_number])
+  target_resource_id             = azurerm_data_factory.prod_a7m_data_factory.id
+  log_analytics_workspace_id     = data.azurerm_log_analytics_workspace.log_analytics_workspace.id
+  log_analytics_destination_type = "Dedicated"
+  log {
+    category = "ActivityRuns"
+    enabled  = true
+    retention_policy {
+      enabled = true
+      days    = 31
+    }
+  }
+  log {
+    category = "PipelineRuns"
+    enabled  = true
+    retention_policy {
+      enabled = true
+      days    = 31
+    }
+  }
+  log {
+    category = "TriggerRuns"
+    enabled  = true
+    retention_policy {
+      enabled = true
+      days    = 31
+    }
+  }
+}
